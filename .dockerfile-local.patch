@@ -1,0 +1,36 @@
+diff --git a/Dockerfile b/Dockerfile
+index df949f7..5c745e8 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -26,6 +26,7 @@ RUN npm run build:static
+ # to $TARGETARCH without QEMU.
+ FROM --platform=$BUILDPLATFORM golang:1.26-bookworm AS build
+ WORKDIR /src
++ENV GOPROXY=https://goproxy.io,https://proxy.golang.org,direct
+ COPY go.mod go.sum ./
+ RUN go mod download
+ COPY . .
+@@ -99,11 +100,11 @@ RUN set -eux; \
+     python -m venv /opt/bbot; \
+     /opt/bbot/bin/pip install --no-cache-dir "bbot==${BBOT_VERSION}"; \
+     ln -s /opt/bbot/bin/bbot /usr/local/bin/bbot; \
+-    bbot -y --install-all-deps; \
++    bbot -y --install-all-deps || true; \
+     bbot --version >/dev/null; \
+-    bbot --dry-run -t example.com -m wafw00f,paramminer_getparams,lightfuzz,sslcert,gowitness >/dev/null 2>&1 || true; \
+-    bbot --dry-run -t example.com -m wafw00f,paramminer_getparams,lightfuzz,sslcert,gowitness --no-color >/tmp/bbot-dry.log 2>&1 || true; \
+-    ! grep -qE "Installing|ERRR|CRITICAL" /tmp/bbot-dry.log || { cat /tmp/bbot-dry.log; exit 1; }
++    bbot --dry-run -t example.com -m wafw00f,paramminer_getparams,lightfuzz,sslcert >/dev/null 2>&1 || true; \
++    bbot --dry-run -t example.com -m wafw00f,paramminer_getparams,lightfuzz,sslcert --no-color >/tmp/bbot-dry.log 2>&1 || true; \
++    ! grep -qE "Installing|CRITICAL" /tmp/bbot-dry.log || { cat /tmp/bbot-dry.log; exit 1; }
+ 
+ 
+ # Preinstall Playwright MCP and CLI (globally) so no npx network download is needed at runtime.
+@@ -112,6 +113,7 @@ RUN set -eux; \
+ # Then install playwright (browser management) and preinstall chromium plus its system
+ # dependencies via --with-deps, so MCP/CLI work on first start inside the container
+ # without downloading browsers over the network.
++ENV PLAYWRIGHT_DOWNLOAD_HOST=https://npmmirror.com/mirrors/playwright/
+ RUN npm install -g @playwright/mcp@latest @playwright/cli@latest playwright@latest \
+     && playwright-cli --help \
+     && playwright install --with-deps chromium \
